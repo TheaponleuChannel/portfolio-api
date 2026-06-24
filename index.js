@@ -72,8 +72,9 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`\n🚀  Portfolio API running on http://localhost:${PORT}`);
   console.log(`📖  Docs:          http://localhost:${PORT}/`);
-  console.log(`❤️   Health:        http://localhost:${PORT}/health`);
+  console.log(`❤️   Health:       http://localhost:${PORT}/health`);
   console.log(`🔗  Base URL:      http://localhost:${PORT}${API_VERSION}\n`);
+  console.log(`📝  Swagger UI:    http://localhost:${PORT}/docs\n`);
 });
 
 module.exports = app;

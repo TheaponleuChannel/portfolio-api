@@ -1,40 +1,64 @@
-const { v4: uuidv4 } = require("uuid");
-const store = require("../data/store");
+/**
+ * Contact Controller
+ * Handles contact/messaging-related HTTP requests
+ */
 
-const getMessages = (req, res) => {
-  const { read } = req.query;
-  let messages = [...store.messages].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  if (read !== undefined) messages = messages.filter((m) => m.read === (read === "true"));
-  res.json({ success: true, count: messages.length, data: messages });
+const contactService = require("../services/contactService");
+const { successResponse } = require("../utils/responseFormatter");
+const { RESPONSE_MESSAGES, HTTP_STATUS } = require("../constants");
+
+/**
+ * GET /contact/messages
+ * Retrieve contact messages
+ */
+const getMessages = (req, res, next) => {
+  try {
+    const { unreadOnly } = req.query;
+    const filters = { unreadOnly: unreadOnly === "true" };
+    const messages = contactService.getMessages(filters);
+    res.json(successResponse(messages, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
+  }
 };
 
-const createMessage = (req, res) => {
-  const { name, email, subject, message } = req.body;
-  const msg = {
-    id: uuidv4(),
-    name: name.trim(),
-    email: email.trim().toLowerCase(),
-    subject: subject?.trim() || "No Subject",
-    message: message.trim(),
-    read: false,
-    createdAt: new Date().toISOString(),
-  };
-  store.messages.unshift(msg);
-  res.status(201).json({ success: true, data: msg, message: "Message sent successfully." });
+/**
+ * POST /contact
+ * Create a new contact message
+ */
+const createMessage = (req, res, next) => {
+  try {
+    const message = contactService.createMessage(req.body);
+    res.status(HTTP_STATUS.CREATED).json(successResponse(message, RESPONSE_MESSAGES.CREATED_SUCCESS, HTTP_STATUS.CREATED));
+  } catch (error) {
+    next(error);
+  }
 };
 
-const markRead = (req, res) => {
-  const idx = store.messages.findIndex((m) => m.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ success: false, error: { message: "Message not found." } });
-  store.messages[idx].read = true;
-  res.json({ success: true, data: store.messages[idx], message: "Marked as read." });
+/**
+ * PATCH /contact/messages/:id/read
+ * Mark a message as read
+ */
+const markRead = (req, res, next) => {
+  try {
+    const message = contactService.markMessageAsRead(req.params.id);
+    res.json(successResponse(message, RESPONSE_MESSAGES.UPDATED_SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
+  }
 };
 
-const deleteMessage = (req, res) => {
-  const idx = store.messages.findIndex((m) => m.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ success: false, error: { message: "Message not found." } });
-  store.messages.splice(idx, 1);
-  res.json({ success: true, message: "Message deleted." });
+/**
+ * DELETE /contact/messages/:id
+ * Delete a message
+ */
+const deleteMessage = (req, res, next) => {
+  try {
+    contactService.deleteMessage(req.params.id);
+    res.json(successResponse(null, RESPONSE_MESSAGES.DELETED_SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = { getMessages, createMessage, markRead, deleteMessage };

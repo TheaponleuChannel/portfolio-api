@@ -3,78 +3,128 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./src/swagger");
+
+const config = require("./src/config");
+const { errorHandler, notFoundHandler } = require("./src/middlewares/errorMiddleware");
+const { requestLogger } = require("./src/middlewares/requestLogger");
+
 const routes = require("./src/routes");
-const { notFound, errorHandler } = require("./src/middleware");
+const logger = require("./src/utils/logger");
+const swaggerSpec = require("./src/swagger");
 
+/**
+ * Initialize Express app
+ */
 const app = express();
-const PORT = process.env.PORT || 3000;
-const API_VERSION = "/api/v1";
 
-// ── Core Middleware ────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// ── Security & Parsing Middleware ───────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(morgan("dev"));
+app.use(cors(config.cors));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(morgan(config.logging.format));
 
-// ── Health Check ──────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// ── Custom Middleware ───────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+app.use(requestLogger);
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── Health Check Endpoint ───────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     uptime: process.uptime().toFixed(2) + "s",
     timestamp: new Date().toISOString(),
+    environment: config.nodeEnv,
   });
 });
 
-// ── API Docs (inline) ─────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// ── API Documentation ───────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
   res.json({
     name: "Portfolio API",
     version: "1.0.0",
-    baseUrl: API_VERSION,
+    baseUrl: config.apiVersion,
     endpoints: {
-      profile:    { GET: `${API_VERSION}/profile`,                  PATCH: `${API_VERSION}/profile` },
-      projects:   { GET: `${API_VERSION}/projects`,                 POST: `${API_VERSION}/projects`,
-                    "GET (featured)": `${API_VERSION}/projects/featured`,
-                    "GET|PATCH|DELETE (by id)": `${API_VERSION}/projects/:id` },
-      skills:     { GET: `${API_VERSION}/skills`,                   POST: `${API_VERSION}/skills`,
-                    "PATCH|DELETE (by id)": `${API_VERSION}/skills/:id` },
-      experience: { GET: `${API_VERSION}/experience`,               POST: `${API_VERSION}/experience`,
-                    "PATCH|DELETE (by id)": `${API_VERSION}/experience/:id` },
-      contact:    { POST: `${API_VERSION}/contact`,
-                    "GET messages": `${API_VERSION}/contact/messages`,
-                    "PATCH read": `${API_VERSION}/contact/messages/:id/read`,
-                    "DELETE": `${API_VERSION}/contact/messages/:id` },
+      profile: {
+        GET: `${config.apiVersion}/profile`,
+        PATCH: `${config.apiVersion}/profile`,
+      },
+      projects: {
+        GET: `${config.apiVersion}/projects`,
+        POST: `${config.apiVersion}/projects`,
+        "GET (featured)": `${config.apiVersion}/projects/featured`,
+        "GET|PATCH|DELETE (by id)": `${config.apiVersion}/projects/:id`,
+      },
+      skills: {
+        GET: `${config.apiVersion}/skills`,
+        POST: `${config.apiVersion}/skills`,
+        "PATCH|DELETE (by id)": `${config.apiVersion}/skills/:id`,
+      },
+      experience: {
+        GET: `${config.apiVersion}/experience`,
+        POST: `${config.apiVersion}/experience`,
+        "PATCH|DELETE (by id)": `${config.apiVersion}/experience/:id`,
+      },
+      contact: {
+        POST: `${config.apiVersion}/contact`,
+        "GET messages": `${config.apiVersion}/contact/messages`,
+        "PATCH read": `${config.apiVersion}/contact/messages/:id/read`,
+        "DELETE": `${config.apiVersion}/contact/messages/:id`,
+      },
     },
-    queryParams: {
-      projects: "?category=web|mobile|ai|devops|other  &featured=true|false  &status=completed|in-progress  &search=keyword  &sort=createdAt|title  &order=asc|desc",
-      skills: "?category=language|frontend|backend|database|devops",
-      contact: "?read=true|false",
+    documentation: {
+      swagger: "/docs",
+      swaggerJson: "/docs.json",
     },
   });
 });
 
-// ── Swagger UI ────────────────────────────────────────────────────────────
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: "Portfolio API Docs",
-  customCss: ".swagger-ui .topbar { background-color: #1a1a2e; }",
-}));
-app.get("/docs.json", (req, res) => res.json(swaggerSpec));
+// ────────────────────────────────────────────────────────────────────────────
+// ── Swagger API Documentation ───────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+if (config.swagger.enabled) {
+  app.use(
+    "/docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      customSiteTitle: "Portfolio API Documentation",
+      customCss: ".swagger-ui .topbar { background-color: #1a1a2e; }",
+      customfavIcon: "https://favicon.ico",
+    })
+  );
+  app.get("/docs.json", (req, res) => res.json(swaggerSpec));
+}
 
-// ── Routes ────────────────────────────────────────────────────────────────
-app.use(API_VERSION, routes);
+// ────────────────────────────────────────────────────────────────────────────
+// ── API Routes ──────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+app.use(config.apiVersion, routes);
 
-// ── Error Handling ────────────────────────────────────────────────────────
-app.use(notFound);
+// ────────────────────────────────────────────────────────────────────────────
+// ── Error Handling (Must be last) ───────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`\n🚀  Portfolio API running on http://localhost:${PORT}`);
-  console.log(`📖  Docs:          http://localhost:${PORT}/`);
-  console.log(`❤️   Health:       http://localhost:${PORT}/health`);
-  console.log(`🔗  Base URL:      http://localhost:${PORT}${API_VERSION}\n`);
-  console.log(`📝  Swagger UI:    http://localhost:${PORT}/docs\n`);
+// ────────────────────────────────────────────────────────────────────────────
+// ── Server Startup ──────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+app.listen(config.port, () => {
+  logger.info(`🚀 Portfolio API started successfully`);
+  logger.info(`Server running at http://localhost:${config.port}`);
+  logger.info(`API Base URL: http://localhost:${config.port}${config.apiVersion}`);
+  logger.info(`Health Check: http://localhost:${config.port}/health`);
+  if (config.swagger.enabled) {
+    logger.info(`Swagger Docs: http://localhost:${config.port}/docs`);
+  }
+  logger.info(`Environment: ${config.nodeEnv}`);
 });
 
 module.exports = app;

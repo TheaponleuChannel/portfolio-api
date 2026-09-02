@@ -1,39 +1,52 @@
 const router = require("express").Router();
-const profile = require("../controllers/profileController");
-const projects = require("../controllers/projectsController");
-const skills = require("../controllers/skillsController");
-const experience = require("../controllers/experienceController");
-const contact = require("../controllers/contactController");
-const { validateMessage, validateProject } = require("../middleware");
 
-// ── Profile ────────────────────────────────────────────────────────────────
-router.get("/profile", profile.getProfile);
-router.patch("/profile", profile.updateProfile);
+const profileController = require("../controllers/profileController");
+const projectsController = require("../controllers/projectsController");
+const skillsController = require("../controllers/skillsController");
+const experienceController = require("../controllers/experienceController");
+const contactController = require("../controllers/contactController");
 
-// ── Projects ───────────────────────────────────────────────────────────────
-router.get("/projects", projects.getProjects);
-router.get("/projects/featured", projects.getFeatured);
-router.get("/projects/:id", projects.getProject);
-router.post("/projects", validateProject, projects.createProject);
-router.patch("/projects/:id", projects.updateProject);
-router.delete("/projects/:id", projects.deleteProject);
+// Import middleware
+const { validateContactMessageMiddleware, validateProjectMiddleware } = require("../middlewares/validationMiddleware");
 
-// ── Skills ─────────────────────────────────────────────────────────────────
-router.get("/skills", skills.getSkills);
-router.post("/skills", skills.createSkill);
-router.patch("/skills/:id", skills.updateSkill);
-router.delete("/skills/:id", skills.deleteSkill);
+// ────────────────────────────────────────────────────────────────────────────
+// ── Profile Routes ──────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+router.get("/profile", profileController.getProfile);
+router.patch("/profile", profileController.updateProfile);
 
-// ── Experience ─────────────────────────────────────────────────────────────
-router.get("/experience", experience.getExperience);
-router.post("/experience", experience.createExperience);
-router.patch("/experience/:id", experience.updateExperience);
-router.delete("/experience/:id", experience.deleteExperience);
+// ────────────────────────────────────────────────────────────────────────────
+// ── Projects Routes ─────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+router.get("/projects", projectsController.getProjects);
+router.get("/projects/featured", projectsController.getFeatured);
+router.get("/projects/:id", projectsController.getProject);
+router.post("/projects", validateProjectMiddleware, projectsController.createProject);
+router.patch("/projects/:id", projectsController.updateProject);
+router.delete("/projects/:id", projectsController.deleteProject);
 
-// ── Contact ────────────────────────────────────────────────────────────────
-router.get("/contact/messages", contact.getMessages);
-router.post("/contact", validateMessage, contact.createMessage);
-router.patch("/contact/messages/:id/read", contact.markRead);
-router.delete("/contact/messages/:id", contact.deleteMessage);
+// ────────────────────────────────────────────────────────────────────────────
+// ── Skills Routes ───────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+router.get("/skills", skillsController.getSkills);
+router.post("/skills", skillsController.createSkill);
+router.patch("/skills/:id", skillsController.updateSkill);
+router.delete("/skills/:id", skillsController.deleteSkill);
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── Experience Routes ───────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+router.get("/experience", experienceController.getExperience);
+router.post("/experience", experienceController.createExperience);
+router.patch("/experience/:id", experienceController.updateExperience);
+router.delete("/experience/:id", experienceController.deleteExperience);
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── Contact Routes ──────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+router.get("/contact/messages", contactController.getMessages);
+router.post("/contact", validateContactMessageMiddleware, contactController.createMessage);
+router.patch("/contact/messages/:id/read", contactController.markRead);
+router.delete("/contact/messages/:id", contactController.deleteMessage);
 
 module.exports = router;

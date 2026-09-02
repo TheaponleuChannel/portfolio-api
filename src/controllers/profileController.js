@@ -1,22 +1,31 @@
-const store = require("../data/store");
+const profileService = require("../services/profileService");
+const { successResponse } = require("../utils/responseFormatter");
+const { RESPONSE_MESSAGES, HTTP_STATUS } = require("../constants");
 
-const getProfile = (req, res) => {
-  res.json({ success: true, data: store.profile });
+/**
+ * GET /profile
+ * Retrieve the profile
+ */
+const getProfile = (req, res, next) => {
+  try {
+    const profile = profileService.getProfile();
+    res.json(successResponse(profile, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
+  }
 };
 
-const updateProfile = (req, res) => {
-  const allowed = ["name", "title", "bio", "email", "location", "avatar", "social"];
-  const updates = {};
-  for (const key of allowed) {
-    if (req.body[key] !== undefined) updates[key] = req.body[key];
+/**
+ * PATCH /profile
+ * Update the profile
+ */
+const updateProfile = (req, res, next) => {
+  try {
+    const updatedProfile = profileService.updateProfile(req.body);
+    res.json(successResponse(updatedProfile, RESPONSE_MESSAGES.UPDATED_SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
   }
-
-  if (!Object.keys(updates).length) {
-    return res.status(400).json({ success: false, error: { message: "No valid fields provided." } });
-  }
-
-  store.profile = { ...store.profile, ...updates };
-  res.json({ success: true, data: store.profile, message: "Profile updated." });
 };
 
 module.exports = { getProfile, updateProfile };

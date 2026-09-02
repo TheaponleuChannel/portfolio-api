@@ -1,50 +1,68 @@
-const { v4: uuidv4 } = require("uuid");
-const store = require("../data/store");
+/**
+ * Skills Controller
+ * Handles skill-related HTTP requests
+ */
 
-const getSkills = (req, res) => {
-  const { category } = req.query;
-  let skills = [...store.skills];
-  if (category) skills = skills.filter((s) => s.category === category);
+const skillsService = require("../services/skillsService");
+const { successResponse } = require("../utils/responseFormatter");
+const { RESPONSE_MESSAGES, HTTP_STATUS } = require("../constants");
 
-  // Group by category
-  const grouped = skills.reduce((acc, skill) => {
-    if (!acc[skill.category]) acc[skill.category] = [];
-    acc[skill.category].push(skill);
-    return acc;
-  }, {});
-
-  res.json({ success: true, count: skills.length, data: skills, grouped });
+/**
+ * GET /skills
+ * Retrieve skills with optional filters
+ */
+const getSkills = (req, res, next) => {
+  try {
+    const { category, minLevel, sortBy } = req.query;
+    const filters = { category, minLevel, sortBy };
+    const skills = skillsService.getSkills(filters);
+    const grouped = skillsService.getGroupedByCategory();
+    res.json({
+      ...successResponse(skills, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK),
+      grouped,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
-const createSkill = (req, res) => {
-  const { name, category, level, icon } = req.body;
-  if (!name || !category || level === undefined) {
-    return res.status(422).json({ success: false, errors: ["name, category, and level are required."] });
+/**
+ * POST /skills
+ * Create a new skill
+ */
+const createSkill = (req, res, next) => {
+  try {
+    const skill = skillsService.createSkill(req.body);
+    res.status(HTTP_STATUS.CREATED).json(successResponse(skill, RESPONSE_MESSAGES.CREATED_SUCCESS, HTTP_STATUS.CREATED));
+  } catch (error) {
+    next(error);
   }
-  if (level < 0 || level > 100) {
-    return res.status(422).json({ success: false, errors: ["level must be between 0 and 100."] });
-  }
-  const skill = { id: uuidv4(), name, category, level: Number(level), icon: icon || name.toLowerCase() };
-  store.skills.push(skill);
-  res.status(201).json({ success: true, data: skill, message: "Skill added." });
 };
 
-const updateSkill = (req, res) => {
-  const idx = store.skills.findIndex((s) => s.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ success: false, error: { message: "Skill not found." } });
-  const updates = {};
-  for (const key of ["name", "category", "level", "icon"]) {
-    if (req.body[key] !== undefined) updates[key] = req.body[key];
+/**
+ * PATCH /skills/:id
+ * Update a skill
+ */
+const updateSkill = (req, res, next) => {
+  try {
+    const updated = skillsService.updateSkill(req.params.id, req.body);
+    res.json(successResponse(updated, RESPONSE_MESSAGES.UPDATED_SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
   }
-  store.skills[idx] = { ...store.skills[idx], ...updates };
-  res.json({ success: true, data: store.skills[idx], message: "Skill updated." });
 };
 
-const deleteSkill = (req, res) => {
-  const idx = store.skills.findIndex((s) => s.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ success: false, error: { message: "Skill not found." } });
-  store.skills.splice(idx, 1);
-  res.json({ success: true, message: "Skill deleted." });
+/**
+ * DELETE /skills/:id
+ * Delete a skill
+ */
+const deleteSkill = (req, res, next) => {
+  try {
+    skillsService.deleteSkill(req.params.id);
+    res.json(successResponse(null, RESPONSE_MESSAGES.DELETED_SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = { getSkills, createSkill, updateSkill, deleteSkill };

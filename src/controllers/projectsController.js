@@ -1,89 +1,98 @@
-const { v4: uuidv4 } = require("uuid");
-const store = require("../data/store");
+/**
+ * Projects Controller
+ * Handles project-related HTTP requests
+ */
 
-const getProjects = (req, res) => {
-  let projects = [...store.projects];
-  const { category, featured, status, search, sort = "createdAt", order = "desc" } = req.query;
+const projectsService = require("../services/projectsService");
+const { successResponse } = require("../utils/responseFormatter");
+const { RESPONSE_MESSAGES, HTTP_STATUS } = require("../constants");
 
-  if (category) projects = projects.filter((p) => p.category === category);
-  if (featured !== undefined) projects = projects.filter((p) => p.featured === (featured === "true"));
-  if (status) projects = projects.filter((p) => p.status === status);
-  if (search) {
-    const q = search.toLowerCase();
-    projects = projects.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.techStack.some((t) => t.toLowerCase().includes(q))
-    );
+/**
+ * GET /projects
+ * Retrieve projects with optional filters
+ */
+const getProjects = (req, res, next) => {
+  try {
+    const { category, featured, status, search } = req.query;
+    const filters = { category, status };
+
+    if (featured !== undefined) filters.featured = featured === "true";
+
+    let projects = projectsService.getProjects(filters);
+
+    if (search) {
+      projects = projectsService.searchProjects(search);
+    }
+
+    res.json(successResponse(projects, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
   }
-
-  const validSorts = ["createdAt", "updatedAt", "title"];
-  if (validSorts.includes(sort)) {
-    projects.sort((a, b) => {
-      const aVal = a[sort], bVal = b[sort];
-      return order === "asc" ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
-    });
-  }
-
-  res.json({ success: true, count: projects.length, data: projects });
 };
 
-const getProject = (req, res) => {
-  const project = store.projects.find((p) => p.id === req.params.id);
-  if (!project) {
-    return res.status(404).json({ success: false, error: { message: "Project not found." } });
+/**
+ * GET /projects/featured
+ * Retrieve featured projects
+ */
+const getFeatured = (req, res, next) => {
+  try {
+    const featured = projectsService.getFeatured();
+    res.json(successResponse(featured, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
   }
-  res.json({ success: true, data: project });
 };
 
-const createProject = (req, res) => {
-  const now = new Date().toISOString();
-  const project = {
-    id: uuidv4(),
-    title: req.body.title.trim(),
-    description: req.body.description.trim(),
-    longDescription: req.body.longDescription?.trim() || null,
-    techStack: req.body.techStack,
-    category: req.body.category,
-    featured: req.body.featured ?? false,
-    status: req.body.status || "in-progress",
-    githubUrl: req.body.githubUrl || null,
-    liveUrl: req.body.liveUrl || null,
-    imageUrl: req.body.imageUrl || null,
-    createdAt: now,
-    updatedAt: now,
-  };
-  store.projects.unshift(project);
-  res.status(201).json({ success: true, data: project, message: "Project created." });
+/**
+ * GET /projects/:id
+ * Retrieve a single project by ID
+ */
+const getProject = (req, res, next) => {
+  try {
+    const project = projectsService.getProject(req.params.id);
+    res.json(successResponse(project, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
+  }
 };
 
-const updateProject = (req, res) => {
-  const idx = store.projects.findIndex((p) => p.id === req.params.id);
-  if (idx === -1) {
-    return res.status(404).json({ success: false, error: { message: "Project not found." } });
+/**
+ * POST /projects
+ * Create a new project
+ */
+const createProject = (req, res, next) => {
+  try {
+    const project = projectsService.createProject(req.body);
+    res.status(HTTP_STATUS.CREATED).json(successResponse(project, RESPONSE_MESSAGES.CREATED_SUCCESS, HTTP_STATUS.CREATED));
+  } catch (error) {
+    next(error);
   }
-  const allowed = ["title", "description", "longDescription", "techStack", "category", "featured", "status", "githubUrl", "liveUrl", "imageUrl"];
-  const updates = {};
-  for (const key of allowed) {
-    if (req.body[key] !== undefined) updates[key] = req.body[key];
-  }
-  store.projects[idx] = { ...store.projects[idx], ...updates, updatedAt: new Date().toISOString() };
-  res.json({ success: true, data: store.projects[idx], message: "Project updated." });
 };
 
-const deleteProject = (req, res) => {
-  const idx = store.projects.findIndex((p) => p.id === req.params.id);
-  if (idx === -1) {
-    return res.status(404).json({ success: false, error: { message: "Project not found." } });
+/**
+ * PATCH /projects/:id
+ * Update a project
+ */
+const updateProject = (req, res, next) => {
+  try {
+    const updated = projectsService.updateProject(req.params.id, req.body);
+    res.json(successResponse(updated, RESPONSE_MESSAGES.UPDATED_SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
   }
-  store.projects.splice(idx, 1);
-  res.json({ success: true, message: "Project deleted." });
 };
 
-const getFeatured = (req, res) => {
-  const featured = store.projects.filter((p) => p.featured);
-  res.json({ success: true, count: featured.length, data: featured });
+/**
+ * DELETE /projects/:id
+ * Delete a project
+ */
+const deleteProject = (req, res, next) => {
+  try {
+    projectsService.deleteProject(req.params.id);
+    res.json(successResponse(null, RESPONSE_MESSAGES.DELETED_SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = { getProjects, getProject, createProject, updateProject, deleteProject, getFeatured };

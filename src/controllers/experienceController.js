@@ -1,51 +1,64 @@
-const { v4: uuidv4 } = require("uuid");
-const store = require("../data/store");
+/**
+ * Experience Controller
+ * Handles experience-related HTTP requests
+ */
 
-const getExperience = (req, res) => {
-  const sorted = [...store.experience].sort((a, b) =>
-    a.startDate < b.startDate ? 1 : -1
-  );
-  res.json({ success: true, count: sorted.length, data: sorted });
-};
+const experienceService = require("../services/experienceService");
+const { successResponse } = require("../utils/responseFormatter");
+const { RESPONSE_MESSAGES, HTTP_STATUS } = require("../constants");
 
-const createExperience = (req, res) => {
-  const { company, role, startDate, location, description, highlights, techStack, endDate, current } = req.body;
-  if (!company || !role || !startDate) {
-    return res.status(422).json({ success: false, errors: ["company, role, and startDate are required."] });
+/**
+ * GET /experience
+ * Retrieve experience entries
+ */
+const getExperience = (req, res, next) => {
+  try {
+    const { company, sortBy } = req.query;
+    const filters = { company, sortBy: sortBy || "date" };
+    const experience = experienceService.getExperience(filters);
+    res.json(successResponse(experience, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
   }
-  const exp = {
-    id: uuidv4(),
-    company,
-    role,
-    location: location || "",
-    startDate,
-    endDate: current ? null : endDate || null,
-    current: !!current,
-    description: description || "",
-    highlights: Array.isArray(highlights) ? highlights : [],
-    techStack: Array.isArray(techStack) ? techStack : [],
-  };
-  store.experience.push(exp);
-  res.status(201).json({ success: true, data: exp, message: "Experience added." });
 };
 
-const updateExperience = (req, res) => {
-  const idx = store.experience.findIndex((e) => e.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ success: false, error: { message: "Experience not found." } });
-  const allowed = ["company", "role", "location", "startDate", "endDate", "current", "description", "highlights", "techStack"];
-  const updates = {};
-  for (const key of allowed) {
-    if (req.body[key] !== undefined) updates[key] = req.body[key];
+/**
+ * POST /experience
+ * Create a new experience entry
+ */
+const createExperience = (req, res, next) => {
+  try {
+    const experience = experienceService.createExperience(req.body);
+    res.status(HTTP_STATUS.CREATED).json(successResponse(experience, RESPONSE_MESSAGES.CREATED_SUCCESS, HTTP_STATUS.CREATED));
+  } catch (error) {
+    next(error);
   }
-  store.experience[idx] = { ...store.experience[idx], ...updates };
-  res.json({ success: true, data: store.experience[idx], message: "Experience updated." });
 };
 
-const deleteExperience = (req, res) => {
-  const idx = store.experience.findIndex((e) => e.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ success: false, error: { message: "Experience not found." } });
-  store.experience.splice(idx, 1);
-  res.json({ success: true, message: "Experience deleted." });
+/**
+ * PATCH /experience/:id
+ * Update an experience entry
+ */
+const updateExperience = (req, res, next) => {
+  try {
+    const updated = experienceService.updateExperience(req.params.id, req.body);
+    res.json(successResponse(updated, RESPONSE_MESSAGES.UPDATED_SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /experience/:id
+ * Delete an experience entry
+ */
+const deleteExperience = (req, res, next) => {
+  try {
+    experienceService.deleteExperience(req.params.id);
+    res.json(successResponse(null, RESPONSE_MESSAGES.DELETED_SUCCESS, HTTP_STATUS.OK));
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = { getExperience, createExperience, updateExperience, deleteExperience };

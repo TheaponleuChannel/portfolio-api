@@ -5,6 +5,7 @@ const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 
 const config = require("./src/config");
+const { connectDB } = require("./src/config/db");
 const { errorHandler, notFoundHandler } = require("./src/middlewares/errorMiddleware");
 const { requestLogger } = require("./src/middlewares/requestLogger");
 
@@ -106,6 +107,20 @@ if (config.swagger.enabled) {
 // ── API Routes ──────────────────────────────────────────────────────────────
 // ────────────────────────────────────────────────────────────────────────────
 app.use(config.apiVersion, routes);
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── MongoDB Connection ──────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+connectDB()
+  .then((connected) => {
+    if (connected) {
+      logger.info("Project data is served from MongoDB");
+    }
+  })
+  .catch((err) => {
+    logger.error("MongoDB connection failed", { message: err.message });
+    process.exit(1);
+  });
 
 // ────────────────────────────────────────────────────────────────────────────
 // ── Error Handling (Must be last) ───────────────────────────────────────────

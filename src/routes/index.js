@@ -16,14 +16,11 @@ router.get("/profile", profileController.getProfile);
 router.patch("/profile", profileController.updateProfile);
 
 // ────────────────────────────────────────────────────────────────────────────
-// ── Projects Routes ─────────────────────────────────────────────────────────
+// ── Projects Routes (fetch-only, backed by MongoDB) ───────────────────────
 // ────────────────────────────────────────────────────────────────────────────
 router.get("/projects", projectsController.getProjects);
 router.get("/projects/featured", projectsController.getFeatured);
 router.get("/projects/:id", projectsController.getProject);
-router.post("/projects", validateProjectMiddleware, projectsController.createProject);
-router.patch("/projects/:id", projectsController.updateProject);
-router.delete("/projects/:id", projectsController.deleteProject);
 
 // ────────────────────────────────────────────────────────────────────────────
 // ── Skills Routes ───────────────────────────────────────────────────────────

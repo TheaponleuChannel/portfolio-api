@@ -1,30 +1,38 @@
 /**
- * Projects Controller
- * Handles project-related HTTP requests
+ * Projects Controller (MongoDB)
+ * Read-only handlers for project-related HTTP requests
  */
 
 const projectsService = require("../services/projectsService");
 const { successResponse } = require("../utils/responseFormatter");
-const { RESPONSE_MESSAGES, HTTP_STATUS } = require("../constants");
+const { HTTP_STATUS, RESPONSE_MESSAGES } = require("../constants");
 
 /**
  * GET /projects
  * Retrieve projects with optional filters
  */
-const getProjects = (req, res, next) => {
+const getProjects = async (req, res, next) => {
   try {
-    const { category, featured, status, search } = req.query;
+    const { category, featured, status, search, page, limit, sortBy, sortOrder } = req.query;
     const filters = { category, status };
 
     if (featured !== undefined) filters.featured = featured === "true";
+    if (search) filters.search = search;
 
-    let projects = projectsService.getProjects(filters);
+    const result = await projectsService.getProjects(filters, { page, limit, sortBy, sortOrder });
 
-    if (search) {
-      projects = projectsService.searchProjects(search);
-    }
-
-    res.json(successResponse(projects, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK));
+    res.json({
+      success: true,
+      message: RESPONSE_MESSAGES.SUCCESS,
+      data: result.items,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        pages: result.limit > 0 ? Math.ceil(result.total / result.limit) : 1,
+        hasMore: result.limit > 0 ? result.page * result.limit < result.total : false,
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -34,9 +42,9 @@ const getProjects = (req, res, next) => {
  * GET /projects/featured
  * Retrieve featured projects
  */
-const getFeatured = (req, res, next) => {
+const getFeatured = async (req, res, next) => {
   try {
-    const featured = projectsService.getFeatured();
+    const featured = await projectsService.getFeatured();
     res.json(successResponse(featured, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK));
   } catch (error) {
     next(error);
@@ -45,54 +53,15 @@ const getFeatured = (req, res, next) => {
 
 /**
  * GET /projects/:id
- * Retrieve a single project by ID
+ * Supports both Mongo _id and slug
  */
-const getProject = (req, res, next) => {
+const getProject = async (req, res, next) => {
   try {
-    const project = projectsService.getProject(req.params.id);
+    const project = await projectsService.getProject(req.params.id);
     res.json(successResponse(project, RESPONSE_MESSAGES.SUCCESS, HTTP_STATUS.OK));
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * POST /projects
- * Create a new project
- */
-const createProject = (req, res, next) => {
-  try {
-    const project = projectsService.createProject(req.body);
-    res.status(HTTP_STATUS.CREATED).json(successResponse(project, RESPONSE_MESSAGES.CREATED_SUCCESS, HTTP_STATUS.CREATED));
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * PATCH /projects/:id
- * Update a project
- */
-const updateProject = (req, res, next) => {
-  try {
-    const updated = projectsService.updateProject(req.params.id, req.body);
-    res.json(successResponse(updated, RESPONSE_MESSAGES.UPDATED_SUCCESS, HTTP_STATUS.OK));
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * DELETE /projects/:id
- * Delete a project
- */
-const deleteProject = (req, res, next) => {
-  try {
-    projectsService.deleteProject(req.params.id);
-    res.json(successResponse(null, RESPONSE_MESSAGES.DELETED_SUCCESS, HTTP_STATUS.OK));
-  } catch (error) {
-    next(error);
-  }
-};
-
-module.exports = { getProjects, getProject, createProject, updateProject, deleteProject, getFeatured };
+module.exports = { getProjects, getFeatured, getProject };

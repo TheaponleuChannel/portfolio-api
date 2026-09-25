@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const mongoose = require("mongoose");
 const swaggerUi = require("swagger-ui-express");
 
 const config = require("./src/config");
@@ -42,11 +43,17 @@ app.use(requestLogger);
 // ── Health Check Endpoint ───────────────────────────────────────────────────
 // ────────────────────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStates = { 0: "disconnected", 1: "connected", 2: "connecting", 3: "disconnecting" };
   res.json({
     status: "ok",
     uptime: process.uptime().toFixed(2) + "s",
     timestamp: new Date().toISOString(),
     environment: config.nodeEnv,
+    db: {
+      state: dbStates[dbState] || String(dbState),
+      uriConfigured: Boolean(config.mongo.uri),
+    },
   });
 });
 

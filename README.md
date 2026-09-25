@@ -16,9 +16,10 @@ Server runs at `http://localhost:3000`. Change the port with `PORT=8080 npm star
 
 ## Base URL
 
-```
-http://localhost:3000/api/v1
-```
+| Environment | URL |
+|---|---|
+| Production | `https://portfolio-api-jgpt.onrender.com/api/v1` |
+| Local dev | `http://localhost:3000/api/v1` |
 
 ---
 
@@ -151,4 +152,12 @@ portfolio-api/
 └── package.json
 ```
 
-> **Note:** This API uses an in-memory store. Data resets on server restart. Swap `src/data/store.js` with a database (PostgreSQL, MongoDB, SQLite) for persistence.
+> **Note:** Projects are stored in **MongoDB** (configured via `MONGODB_URI`). Other entities (profile, skills, experience, contact) use an in-memory store and reset on restart. Projects endpoints are **read-only** (fetch-only) — create/update/delete are not exposed.
+
+---
+
+## Deployment
+
+Hosted on **Render** — live at `https://portfolio-api-jgpt.onrender.com`.
+
+See [DEPLOY.md](DEPLOY.md) for the full deployment guide (Atlas network access, env vars, free-tier notes).

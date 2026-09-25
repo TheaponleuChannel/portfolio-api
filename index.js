@@ -5,6 +5,7 @@ const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 
 const config = require("./src/config");
+const { checkEnv } = require("./src/config/envCheck");
 const { connectDB } = require("./src/config/db");
 const { errorHandler, notFoundHandler } = require("./src/middlewares/errorMiddleware");
 const { requestLogger } = require("./src/middlewares/requestLogger");
@@ -17,6 +18,11 @@ const swaggerSpec = require("./src/swagger");
  * Initialize Express app
  */
 const app = express();
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── Startup Env Check ───────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+checkEnv();
 
 // ────────────────────────────────────────────────────────────────────────────
 // ── Security & Parsing Middleware ───────────────────────────────────────────
@@ -133,11 +139,11 @@ app.use(errorHandler);
 // ────────────────────────────────────────────────────────────────────────────
 app.listen(config.port, () => {
   logger.info(`🚀 Portfolio API started successfully`);
-  logger.info(`Server running at http://localhost:${config.port}`);
-  logger.info(`API Base URL: http://localhost:${config.port}${config.apiVersion}`);
-  logger.info(`Health Check: http://localhost:${config.port}/health`);
+  logger.info(`Server running at ${config.appUrl}`);
+  logger.info(`API Base URL: ${config.appUrl}${config.apiVersion}`);
+  logger.info(`Health Check: ${config.appUrl}/health`);
   if (config.swagger.enabled) {
-    logger.info(`Swagger Docs: http://localhost:${config.port}/docs`);
+    logger.info(`Swagger Docs: ${config.appUrl}/docs`);
   }
   logger.info(`Environment: ${config.nodeEnv}`);
 });

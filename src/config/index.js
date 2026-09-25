@@ -15,12 +15,16 @@ require("dotenv").config({ path: path.join(__dirname, "..", "..", `.env.${nodeEn
 const config = {
   nodeEnv,
   port: process.env.PORT || 3000,
+  // Public base URL of the API (Render URL in production, localhost in dev).
+  // Override with PUBLIC_URL if the app is served behind a custom domain.
+  appUrl: process.env.PUBLIC_URL || (nodeEnv === "production" ? "https://portfolio-api-jgpt.onrender.com" : `http://localhost:${process.env.PORT || 3000}`),
   mongo: {
     uri: process.env.MONGODB_URI,
   },
   apiVersion: "/api/v1",
   cors: {
-    origin: process.env.CORS_ORIGIN || "*",
+    // Comma-separated origins (e.g. "https://mysite.com,https://www.mysite.com")
+    origin: (process.env.CORS_ORIGIN || "*").split(",").map((o) => o.trim()).filter(Boolean),
     credentials: true,
   },
   swagger: {

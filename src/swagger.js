@@ -1,4 +1,5 @@
 const swaggerJsdoc = require("swagger-jsdoc");
+const { appUrl } = require("./config");
 
 const options = {
   definition: {
@@ -9,7 +10,10 @@ const options = {
       description: "A RESTful API for a developer portfolio — manage projects, skills, experience, and contact messages.",
       contact: { name: "Alex Johnson", email: "alex@example.com" },
     },
-    servers: [{ url: "/api/v1", description: "Version 1" }],
+    servers: [
+      { url: `${appUrl}/api/v1`, description: "Production (Render)" },
+      { url: "/api/v1", description: "Same-origin / local development" },
+    ],
     tags: [
       { name: "Profile", description: "Portfolio owner profile" },
       { name: "Projects", description: "Portfolio projects" },
